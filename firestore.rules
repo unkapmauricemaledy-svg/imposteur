@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Rooms : lisibles/écrites par tout utilisateur authentifié
+    // Sécurité simple pour démarrer; à durcir en prod
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.hostId == request.auth.uid;
+      allow update, delete: if request.auth != null;
+
+      match /players/{playerId} {
+        allow read: if request.auth != null;
+        // Un joueur ne peut créer/modifier que son propre doc (sauf l'hôte qui peut tout faire)
+        allow write: if request.auth != null
+                     && (request.auth.uid == playerId
+                         || get(/databases/$(database)/documents/rooms/$(roomId)).data.hostId == request.auth.uid);
+      }
+    }
+  }
+}
